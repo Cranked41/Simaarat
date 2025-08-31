@@ -59,7 +59,7 @@ object FaceUtil {
         val b = v2.subList(0, len)
 
         val cos = cosineSimilarity(a, b)
-        val isMatch = cos >= threshold.toInt()
+        val isMatch = cos >= threshold.toDouble()
 
         return FaceCompareResponse(similarity = cos, isMatch = isMatch)
     }
