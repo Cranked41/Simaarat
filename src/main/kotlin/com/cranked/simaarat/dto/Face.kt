@@ -10,7 +10,7 @@ import java.util.UUID
 data class Face(
     @Id
     @UuidGenerator
-    val faceId: UUID? = null,
+    val faceId: String? = null,
     @Column(length = 200)
     val name: String,
     @Lob

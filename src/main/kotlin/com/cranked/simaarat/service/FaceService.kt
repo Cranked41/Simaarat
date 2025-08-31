@@ -1,16 +1,22 @@
 package com.cranked.simaarat.service
+import java.util.Base64
 
 import com.cranked.simaarat.dto.Face
 import com.cranked.simaarat.dto.FaceCreateRequest
-import com.cranked.simaarat.dto.FaceCompareResponse
 import com.cranked.simaarat.dto.FaceCreateResponseModel
 import com.cranked.simaarat.repository.FaceRepository
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.multipart.MultipartFile
+import java.io.File
+
 
 @Service
 class FaceService(
     private val faceRepository: FaceRepository
 ) {
+
+
     fun createFace(req: FaceCreateRequest): FaceCreateResponseModel {
         val response = faceRepository.save(
             Face(
@@ -21,46 +27,26 @@ class FaceService(
         return FaceCreateResponseModel(faceId = response.faceId.toString())
     }
 
-    fun compareFaces(face1: ByteArray, face2: ByteArray): FaceCompareResponse {
-        require(face1.isNotEmpty() && face2.isNotEmpty()) { "Girdi byte dizileri boş olamaz" }
+    @Transactional(readOnly = true)
+    fun getFaceInformations(faceId: String) = faceRepository.findByFaceId(faceId)
 
-        // ByteArray -> List<Double> (0..255)
-        val v1 = face1.map { (it.toInt() and 0xFF).toDouble() }
-        val v2 = face2.map { (it.toInt() and 0xFF).toDouble() }
+    fun extractLandmarksBase64(file: MultipartFile): String {
 
-        // Uzunlukları eşitle: daha kısa olana göre kırp
-        val len = kotlin.math.min(v1.size, v2.size)
-        require(len > 0) { "Karşılaştırma için yeterli veri yok" }
-        val a = v1.subList(0, len)
-        val b = v2.subList(0, len)
-
-        val cos = cosineSimilarity(a, b)
-        val isMatch = cos >= 0.8
-
-        return FaceCompareResponse(similarity = cos, isMatch = isMatch)
+        return Base64.getEncoder().encodeToString("".toByteArray())
     }
 
-    private fun cosineSimilarity(v1: List<Double>, v2: List<Double>): Double {
-        var dot = 0.0
-        var n1 = 0.0
-        var n2 = 0.0
-        for (i in v1.indices) {
-            val a = v1[i]
-            val b = v2[i]
-            dot += a * b
-            n1 += a * a
-            n2 += b * b
+    private fun getLandmarkEnum(idx: Int): String {
+        return when (idx) {
+            in 0..16 -> "JAWLINE"
+            in 17..21 -> "RIGHT_EYEBROW"
+            in 22..26 -> "LEFT_EYEBROW"
+            in 27..30 -> "NOSE_BRIDGE"
+            in 31..35 -> "NOSE_BOTTOM"
+            in 36..41 -> "RIGHT_EYE"
+            in 42..47 -> "LEFT_EYE"
+            in 48..59 -> "MOUTH_OUTLINE"
+            in 60..67 -> "MOUTH_INNER"
+            else -> "UNKNOWN"
         }
-        val denom = (kotlin.math.sqrt(n1) * kotlin.math.sqrt(n2))
-        return if (denom == 0.0) 0.0 else dot / denom
-    }
-
-    private fun euclideanDistance(v1: List<Double>, v2: List<Double>): Double {
-        var sum = 0.0
-        for (i in v1.indices) {
-            val d = v1[i] - v2[i]
-            sum += d * d
-        }
-        return kotlin.math.sqrt(sum)
     }
 }

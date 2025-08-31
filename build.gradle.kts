@@ -8,7 +8,7 @@ plugins {
 
 group = "com.cranked"
 version = "0.0.1-SNAPSHOT"
-description = "Demo project for Spring Boot"
+description = "SimaArat project for Spring Boot"
 
 java {
 	toolchain {
@@ -37,7 +37,7 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    implementation("org.openpnp:opencv:4.5.1-2")
+    implementation("org.bytedeco:javacv-platform:1.5.12")
 
 }
 

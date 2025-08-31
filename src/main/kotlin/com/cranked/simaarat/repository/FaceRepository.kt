@@ -5,4 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-interface FaceRepository : JpaRepository<Face, Long>
+interface FaceRepository : JpaRepository<Face, String>{
+    fun findByFaceId(id: String): Face?
+}
