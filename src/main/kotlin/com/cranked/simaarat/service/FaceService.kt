@@ -1,14 +1,12 @@
 package com.cranked.simaarat.service
-import java.util.Base64
 
 import com.cranked.simaarat.dto.Face
 import com.cranked.simaarat.dto.FaceCreateRequest
 import com.cranked.simaarat.dto.FaceCreateResponseModel
 import com.cranked.simaarat.repository.FaceRepository
+import com.cranked.simaarat.utils.FaceUtil
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.web.multipart.MultipartFile
-import java.io.File
 
 
 @Service
@@ -30,9 +28,9 @@ class FaceService(
     @Transactional(readOnly = true)
     fun getFaceInformations(faceId: String) = faceRepository.findByFaceId(faceId)
 
-    fun extractLandmarksBase64(file: MultipartFile): String {
+    fun extractLandmarksBase64(imageBytes: ByteArray): String {
 
-        return Base64.getEncoder().encodeToString("".toByteArray())
+        return FaceUtil.drawLandmarkRegionsWithLegend(imageBytes)
     }
 
     private fun getLandmarkEnum(idx: Int): String {
@@ -49,4 +47,10 @@ class FaceService(
             else -> "UNKNOWN"
         }
     }
+
+    fun cropRegionBase64(imageBytes: ByteArray, regionName: String, padding: Int?): String =
+            FaceUtil.cropRegionBase64(imageBytes, regionName, padding ?: 12)
+
+    fun cropRegionMaskedBase64(imageBytes: ByteArray, regionName: String, shape: String?, padding: Int?): String =
+            FaceUtil.cropRegionMaskedBase64(imageBytes, regionName, shape ?: "polygon", padding ?: 12)
 }

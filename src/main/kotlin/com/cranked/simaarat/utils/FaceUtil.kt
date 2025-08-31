@@ -2,6 +2,7 @@ package com.cranked.simaarat.utils
 
 import com.cranked.simaarat.dto.Face
 import com.cranked.simaarat.dto.FaceCompareResponse
+import com.cranked.simaarat.enums.FaceLandMark
 import jdk.jfr.Threshold
 import org.bytedeco.opencv.opencv_core.Mat
 import org.bytedeco.opencv.opencv_core.Point2f
@@ -19,6 +20,7 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.Base64
 import org.bytedeco.javacpp.BytePointer
+import org.bytedeco.javacpp.IntPointer
 import org.bytedeco.opencv.global.opencv_core
 import org.bytedeco.opencv.global.opencv_core.CV_8U
 import org.bytedeco.opencv.global.opencv_imgcodecs
@@ -295,6 +297,7 @@ object FaceUtil {
                 fm.loadModel(lbfPath())
                 fm
             }
+
             Engine.KAZEMI -> {
                 val fm = FacemarkKazemi.create()
                 fm.loadModel(kazemiPath())
@@ -357,7 +360,9 @@ object FaceUtil {
         for (i in 0 until faces.size().toInt()) {
             val r = faces.get(i.toLong())
             val area = r.width().toLong() * r.height().toLong()
-            if (area > bestArea) { bestArea = area; best = i }
+            if (area > bestArea) {
+                bestArea = area; best = i
+            }
         }
 
         // 1) Default engine
@@ -402,7 +407,8 @@ object FaceUtil {
     private fun isPlausible(landmarks: Point2fVectorVector): Boolean {
         if (landmarks.size() == 0L) return false
         val pts = landmarks.get(0)  // ilk yüz
-        val need = intArrayOf(36,39,42,45,30,33,8,51,57) // sağ/sol göz köşeleri, burun uç/orta, çene, ağız üst/alt
+        val need =
+            intArrayOf(36, 39, 42, 45, 30, 33, 8, 51, 57) // sağ/sol göz köşeleri, burun uç/orta, çene, ağız üst/alt
         for (i in need) if (i >= pts.size()) return false
 
         fun pt(i: Int) = pts.get(i.toLong())
@@ -421,34 +427,36 @@ object FaceUtil {
     }
 
     private fun drawOverlay(color: Mat, ptsVec: org.bytedeco.opencv.opencv_core.Point2fVector) {
-        data class Col(val b:Int, val g:Int, val r:Int)
+        data class Col(val b: Int, val g: Int, val r: Int)
+
         val palette = mapOf(
-            "LEFT_EYE"      to Col(0, 0, 255),
-            "RIGHT_EYE"     to Col(255, 0, 0),
-            "LEFT_EYEBROW"  to Col(0, 255, 255),
+            "LEFT_EYE" to Col(0, 0, 255),
+            "RIGHT_EYE" to Col(255, 0, 0),
+            "LEFT_EYEBROW" to Col(0, 255, 255),
             "RIGHT_EYEBROW" to Col(255, 165, 0),
-            "NOSE_BRIDGE"   to Col(255, 0, 255),
-            "NOSE_BOTTOM"   to Col(0, 215, 255),
-            "MOUTH_OUTER"   to Col(128, 0, 128),
-            "MOUTH_INNER"   to Col(203, 192, 255),
-            "JAWLINE"       to Col(34, 139, 34)
+            "NOSE_BRIDGE" to Col(255, 0, 255),
+            "NOSE_BOTTOM" to Col(0, 215, 255),
+            "MOUTH_OUTER" to Col(128, 0, 128),
+            "MOUTH_INNER" to Col(203, 192, 255),
+            "JAWLINE" to Col(34, 139, 34)
         )
+
         fun scalar(c: Col) = Scalar(c.b.toDouble(), c.g.toDouble(), c.r.toDouble(), 255.0)
         fun p(i: Int): Point2f = ptsVec.get(i.toLong())
 
-        val MOUTH_OUTER = listOf(48,49,50,51,52,53,54,55,56,57,58,59)
-        val MOUTH_INNER = listOf(60,61,62,63,64,65,66,67)
+        val MOUTH_OUTER = listOf(48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59)
+        val MOUTH_INNER = listOf(60, 61, 62, 63, 64, 65, 66, 67)
 
         val groups = listOf(
-            "JAWLINE"        to (0..16).toList(),
-            "RIGHT_EYEBROW"  to (17..21).toList(),
-            "LEFT_EYEBROW"   to (22..26).toList(),
-            "NOSE_BRIDGE"    to (27..30).toList(),
-            "NOSE_BOTTOM"    to (31..35).toList(),
-            "RIGHT_EYE"      to (36..41).toList(),
-            "LEFT_EYE"       to (42..47).toList(),
-            "MOUTH_OUTER"    to MOUTH_OUTER,
-            "MOUTH_INNER"    to MOUTH_INNER
+            "JAWLINE" to (0..16).toList(),
+            "RIGHT_EYEBROW" to (17..21).toList(),
+            "LEFT_EYEBROW" to (22..26).toList(),
+            "NOSE_BRIDGE" to (27..30).toList(),
+            "NOSE_BOTTOM" to (31..35).toList(),
+            "RIGHT_EYE" to (36..41).toList(),
+            "LEFT_EYE" to (42..47).toList(),
+            "MOUTH_OUTER" to MOUTH_OUTER,
+            "MOUTH_INNER" to MOUTH_INNER
         )
         val thickness = 2
         val radius = 1
@@ -458,7 +466,8 @@ object FaceUtil {
             for (k in idxs.indices) {
                 val j = if (k == idxs.lastIndex) 0 else k + 1
                 if (!closed && j == 0) break
-                val a = p(idxs[k]); val b = p(idxs[j])
+                val a = p(idxs[k]);
+                val b = p(idxs[j])
                 opencv_imgproc.line(
                     color,
                     Point(a.x().toInt(), a.y().toInt()),
@@ -467,6 +476,7 @@ object FaceUtil {
                 )
             }
         }
+
         fun drawPoints(idxs: List<Int>, sc: Scalar) {
             for (idx in idxs) {
                 val cpt = p(idx)
@@ -477,10 +487,11 @@ object FaceUtil {
             }
         }
         for ((region, idxs) in groups) {
-            val sc = scalar(palette[region] ?: Col(255,255,255))
+            val sc = scalar(palette[region] ?: Col(255, 255, 255))
             when (region) {
                 "RIGHT_EYE", "LEFT_EYE", "MOUTH_OUTER", "MOUTH_INNER" ->
                     drawChain(idxs, sc, closed = true)
+
                 else ->
                     drawChain(idxs, sc, closed = false)
             }
@@ -497,18 +508,19 @@ object FaceUtil {
         val roi = out.apply(Rect(0, 0, colorDrawn.cols(), colorDrawn.rows()))
         colorDrawn.copyTo(roi)
 
-        data class Col(val b:Int, val g:Int, val r:Int)
+        data class Col(val b: Int, val g: Int, val r: Int)
+
         fun scalar(c: Col) = Scalar(c.b.toDouble(), c.g.toDouble(), c.r.toDouble(), 255.0)
         val palette = mapOf(
-            "LEFT_EYE" to Col(0,0,255), "RIGHT_EYE" to Col(255,0,0),
-            "LEFT_EYEBROW" to Col(0,255,255), "RIGHT_EYEBROW" to Col(255,165,0),
-            "NOSE_BRIDGE" to Col(255,0,255), "NOSE_BOTTOM" to Col(0,215,255),
-            "MOUTH_OUTER" to Col(128,0,128), "MOUTH_INNER" to Col(203,192,255),
-            "JAWLINE" to Col(34,139,34)
+            "LEFT_EYE" to Col(0, 0, 255), "RIGHT_EYE" to Col(255, 0, 0),
+            "LEFT_EYEBROW" to Col(0, 255, 255), "RIGHT_EYEBROW" to Col(255, 165, 0),
+            "NOSE_BRIDGE" to Col(255, 0, 255), "NOSE_BOTTOM" to Col(0, 215, 255),
+            "MOUTH_OUTER" to Col(128, 0, 128), "MOUTH_INNER" to Col(203, 192, 255),
+            "JAWLINE" to Col(34, 139, 34)
         )
         val ordered = listOf(
-            "LEFT_EYE","RIGHT_EYE","LEFT_EYEBROW","RIGHT_EYEBROW",
-            "NOSE_BRIDGE","NOSE_BOTTOM","MOUTH_OUTER","MOUTH_INNER","JAWLINE"
+            "LEFT_EYE", "RIGHT_EYE", "LEFT_EYEBROW", "RIGHT_EYEBROW",
+            "NOSE_BRIDGE", "NOSE_BOTTOM", "MOUTH_OUTER", "MOUTH_INNER", "JAWLINE"
         )
 
         val startX = colorDrawn.cols() + 12
@@ -521,13 +533,13 @@ object FaceUtil {
         val fontThick = 1
 
         for (label in ordered) {
-            val sc = scalar(palette[label] ?: Col(255,255,255))
+            val sc = scalar(palette[label] ?: Col(255, 255, 255))
             val r = Rect(startX, y, box.width(), box.height())
             opencv_imgproc.rectangle(out, r, sc, opencv_imgproc.FILLED, opencv_imgproc.LINE_8, 0)
             opencv_imgproc.putText(
                 out, label,
                 Point(startX + textOffset, y + box.height() - 2),
-                fontFace, fontScale, Scalar(255.0,255.0,255.0,255.0),
+                fontFace, fontScale, Scalar(255.0, 255.0, 255.0, 255.0),
                 fontThick, opencv_imgproc.LINE_AA, false
             )
             y += box.height() + gap
@@ -547,4 +559,262 @@ object FaceUtil {
         mats.forEach { it.release() }
         data?.deallocate()
     }
+
+    fun cropRegionBase64(imageBytes: ByteArray, regionName: String, padding: Int = 12): String {
+        require(imageBytes.isNotEmpty()) { "Görüntü boş olamaz" }
+        ensureCascade()
+
+        // Decode
+        val data = BytePointer(*imageBytes)
+        val buf = Mat(1, imageBytes.size, CV_8U, data)
+        val color: Mat = opencv_imgcodecs.imdecode(buf, opencv_imgcodecs.IMREAD_COLOR)
+        require(!color.empty()) { "Görsel decode edilemedi" }
+
+        // Gray + face detect
+        val gray = Mat()
+        opencv_imgproc.cvtColor(color, gray, opencv_imgproc.COLOR_BGR2GRAY)
+        opencv_imgproc.equalizeHist(gray, gray)
+        val faces = RectVector()
+        faceCascade.detectMultiScale(gray, faces, 1.1, 3, 0, Size(80, 80), Size())
+        if (faces.size() == 0L) {
+            val b64 = encodePngToBase64(color)
+            releaseAll(data = data, mats = arrayOf(gray, color))
+            return b64
+        }
+
+        // En büyük yüz
+        var best = 0
+        var bestArea = -1L
+        for (i in 0 until faces.size().toInt()) {
+            val r = faces.get(i.toLong())
+            val area = r.width().toLong() * r.height().toLong()
+            if (area > bestArea) { bestArea = area; best = i }
+        }
+
+        // Facemark (LBF tercih; yoksa Kazemi) — mevcut engine seçim mekanizmasını kullan
+        var engine = pickDefaultEngine()
+        var landmarks = fitLandmarks(engine, gray, faces)
+        if (!isPlausible(landmarks)) {
+            engine = if (engine == Engine.LBF) Engine.KAZEMI else Engine.LBF
+            landmarks = fitLandmarks(engine, gray, faces)
+        }
+        val pts = landmarks.get(best.toLong())
+        val count = pts.size().toInt()
+        require(count >= 68) { "Beklenen 68 nokta bulunamadı ($count)" }
+
+        // Enum -> bu bölgenin index listesi
+        val indices: List<Int> = FaceLandMark.entries
+            .filter { it.region.equals(regionName, ignoreCase = true) }
+            .map { it.index }
+            .sorted()
+        require(indices.isNotEmpty()) {
+            "Geçersiz bölge adı: $regionName. Örn: LEFT_EYEBROW, RIGHT_EYE, MOUTH_OUTER, MOUTH_INNER, JAWLINE"
+        }
+
+        // BBox hesapla
+        var minX = Int.MAX_VALUE
+        var minY = Int.MAX_VALUE
+        var maxX = Int.MIN_VALUE
+        var maxY = Int.MIN_VALUE
+        for (idx in indices) {
+            val p = pts.get(idx.toLong())
+            val x = p.x().toInt()
+            val y = p.y().toInt()
+            if (x < minX) minX = x
+            if (y < minY) minY = y
+            if (x > maxX) maxX = x
+            if (y > maxY) maxY = y
+        }
+
+        // Padding ve sınır kontrolü
+        val pad = padding.coerceAtLeast(0)
+        minX = (minX - pad).coerceAtLeast(0)
+        minY = (minY - pad).coerceAtLeast(0)
+        maxX = (maxX + pad).coerceAtMost(color.cols() - 1)
+        maxY = (maxY + pad).coerceAtMost(color.rows() - 1)
+
+        val w = (maxX - minX + 1).coerceAtLeast(1)
+        val h = (maxY - minY + 1).coerceAtLeast(1)
+
+        // Crop ve encode
+        val roi = Rect(minX, minY, w, h)
+        val crop = Mat(color, roi).clone()
+        val outB64 = encodePngToBase64(crop)
+
+        // release
+        crop.release()
+        releaseAll(data = data, mats = arrayOf(gray, color))
+        return outB64
+    }
+
+    /**
+     * Verilen yüz görselinden, istenen bölgeyi (FaceLandMark.region) **oval/ellipse** veya **poligon (landmark şekli)** maske ile kesip
+     * **şeffaf arka planlı PNG** olarak Base64 döner.
+     * @param shape "ellipse" | "polygon" (varsayılan: polygon)
+     */
+    fun cropRegionMaskedBase64(
+        imageBytes: ByteArray,
+        regionName: String,
+        shape: String = "polygon",
+        padding: Int = 12
+    ): String {
+        require(imageBytes.isNotEmpty()) { "Görüntü boş olamaz" }
+        ensureCascade()
+
+        // Decode
+        val data = BytePointer(*imageBytes)
+        val buf = Mat(1, imageBytes.size, CV_8U, data)
+        val color: Mat = opencv_imgcodecs.imdecode(buf, opencv_imgcodecs.IMREAD_COLOR)
+        require(!color.empty()) { "Görsel decode edilemedi" }
+
+        // Gray + face detect
+        val gray = Mat()
+        opencv_imgproc.cvtColor(color, gray, opencv_imgproc.COLOR_BGR2GRAY)
+        opencv_imgproc.equalizeHist(gray, gray)
+        val faces = RectVector()
+        faceCascade.detectMultiScale(gray, faces, 1.1, 3, 0, Size(80,80), Size())
+        if (faces.size() == 0L) {
+            val out = encodePngToBase64(color)
+            releaseAll(data = data, mats = arrayOf(gray, color))
+            return out
+        }
+
+        // En büyük yüz
+        var best = 0
+        var bestArea = -1L
+        for (i in 0 until faces.size().toInt()) {
+            val r = faces.get(i.toLong())
+            val area = r.width().toLong() * r.height().toLong()
+            if (area > bestArea) { bestArea = area; best = i }
+        }
+
+        // Facemark (LBF tercih; yoksa Kazemi) — mevcut engine seçim mekanizmasını kullan
+        var engine = pickDefaultEngine()
+        var landmarks = fitLandmarks(engine, gray, faces)
+        if (!isPlausible(landmarks)) {
+            engine = if (engine == Engine.LBF) Engine.KAZEMI else Engine.LBF
+            landmarks = fitLandmarks(engine, gray, faces)
+        }
+        val pts = landmarks.get(best.toLong())
+        val count = pts.size().toInt()
+        require(count >= 68) { "Beklenen 68 nokta bulunamadı ($count)" }
+
+        // Enum -> bu bölgenin index listesi (hem region hem name'e bak)
+        val indices = FaceLandMark.entries
+            .filter { it.region.equals(regionName.trim(), true) || it.name.equals(regionName.trim(), true) }
+            .map { it.index }
+            .sorted()
+        require(indices.isNotEmpty()) {
+            "Geçersiz bölge adı: $regionName. Örn: LEFT_EYEBROW, RIGHT_EYE, MOUTH_OUTER, MOUTH_INNER, JAWLINE"
+        }
+
+        // BBox + kontur noktaları (orijinal koordinatlar)
+        var minX = Int.MAX_VALUE
+        var minY = Int.MAX_VALUE
+        var maxX = Int.MIN_VALUE
+        var maxY = Int.MIN_VALUE
+        val orderedPoints = ArrayList<Point>(indices.size)
+        for (idx in indices) {
+            val p = pts.get(idx.toLong())
+            val x = p.x().toInt()
+            val y = p.y().toInt()
+            if (x < minX) minX = x
+            if (y < minY) minY = y
+            if (x > maxX) maxX = x
+            if (y > maxY) maxY = y
+            orderedPoints.add(Point(x, y))
+        }
+
+        val pad = padding.coerceAtLeast(0)
+        minX = (minX - pad).coerceAtLeast(0)
+        minY = (minY - pad).coerceAtLeast(0)
+        maxX = (maxX + pad).coerceAtMost(color.cols() - 1)
+        maxY = (maxY + pad).coerceAtMost(color.rows() - 1)
+        val w = (maxX - minX + 1).coerceAtLeast(1)
+        val h = (maxY - minY + 1).coerceAtLeast(1)
+
+        // ROI al (BGR), BGRA'ya çevir
+        val roiRect = Rect(minX, minY, w, h)
+        val cropBgr = Mat(color, roiRect).clone()
+        val cropBgra = Mat()
+        opencv_imgproc.cvtColor(cropBgr, cropBgra, opencv_imgproc.COLOR_BGR2BGRA)
+
+        // Maske (tek kanal)
+        val mask = Mat(h, w, opencv_core.CV_8UC1, Scalar(0.0))
+
+        val sh = shape.lowercase()
+        if (sh == "ellipse") {
+            // Oval maske: ROI'nin merkez ve eksenleri ile
+            val center = Point(w/2, h/2)
+            val axes = Size(w/2, h/2)
+            opencv_imgproc.ellipse(
+                mask, center, axes,
+                0.0, 0.0, 360.0,
+                Scalar(255.0,255.0,255.0,255.0),
+                opencv_imgproc.FILLED,
+                opencv_imgproc.LINE_8,
+                0
+            )
+        } else {
+            // POLYGON (SAFE): Noktaları sırayla birleştir, kapat ve floodFill ile içini doldur
+            val n = orderedPoints.size
+            require(n >= 3) { "Polygon en az 3 nokta içermeli" }
+
+            // ROI'ye göre shift'le ve bbox merkezini seed al
+            var minSX = Int.MAX_VALUE
+            var minSY = Int.MAX_VALUE
+            var maxSX = Int.MIN_VALUE
+            var maxSY = Int.MIN_VALUE
+            val shifted = ArrayList<Point>(n)
+            for (i in 0 until n) {
+                val p = orderedPoints[i]
+                val sx = (p.x() - minX).coerceIn(0, w - 1)
+                val sy = (p.y() - minY).coerceIn(0, h - 1)
+                shifted.add(Point(sx, sy))
+                if (sx < minSX) minSX = sx
+                if (sy < minSY) minSY = sy
+                if (sx > maxSX) maxSX = sx
+                if (sy > maxSY) maxSY = sy
+            }
+
+            val white = Scalar(255.0, 255.0, 255.0, 255.0)
+            val edgeThickness = 2
+
+            // Kenarları sırayla birleştir + KAPAT (son -> ilk)
+            for (i in 0 until n) {
+                val a = shifted[i]
+                val b = shifted[(i + 1) % n]
+                opencv_imgproc.line(
+                    mask,
+                    Point(a.x(), a.y()),
+                    Point(b.x(), b.y()),
+                    white,
+                    edgeThickness,
+                    opencv_imgproc.LINE_8,
+                    0
+                )
+            }
+
+            // Seed: bbox merkezi (kapalı zincir olduğundan içtedir)
+            val seedX = ((minSX + maxSX) / 2).coerceIn(0, w - 1)
+            val seedY = ((minSY + maxSY) / 2).coerceIn(0, h - 1)
+
+            // Flood-fill ile içini doldur
+            opencv_imgproc.floodFill(mask, Point(seedX, seedY), white)
+        }
+
+        // Çıkış: şeffaf BGRA (mask  > 0 ise kopyala)
+        val out = Mat(h, w, cropBgra.type(), Scalar(0.0,0.0,0.0,0.0))
+        cropBgra.copyTo(out, mask)
+
+        // Encode -> Base64 PNG (şeffaf arka plan korunur)
+        val b64 = encodePngToBase64(out)
+
+        // release
+        mask.release(); cropBgr.release(); cropBgra.release(); out.release()
+        releaseAll(data = data, mats = arrayOf(gray, color))
+
+        return b64
+    }
+
 }

@@ -1,13 +1,10 @@
 package com.cranked.simaarat.controller
 
-import com.cranked.simaarat.dto.Face
 import com.cranked.simaarat.dto.FaceCreateRequest
 import org.springframework.web.multipart.MultipartFile
 import org.springframework.http.MediaType
-import com.cranked.simaarat.dto.FaceCompareResponse
 import com.cranked.simaarat.service.FaceService
 import com.cranked.simaarat.utils.FaceUtil
-import jakarta.persistence.*
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -48,5 +45,18 @@ class FaceController(
     fun getFaceLandmarksByVisual(
         @RequestParam("face") face: MultipartFile,
     ): ResponseEntity<*> =
-        ResponseEntity.ok(FaceUtil.drawLandmarkRegionsWithLegend(imageBytes = face.bytes))
+        ResponseEntity.ok(faceService.extractLandmarksBase64(imageBytes = face.bytes))
+
+    @GetMapping(
+        "/region-crop-mask-b64",
+        consumes = [MediaType.MULTIPART_FORM_DATA_VALUE],
+        produces = [MediaType.TEXT_PLAIN_VALUE]
+    )
+    fun cropRegionMaskedBase64(
+        @RequestParam("face") face: MultipartFile,
+        @RequestParam("region") region: String,
+        @RequestParam("shape", required = false) shape: String?,
+        @RequestParam("padding", required = false) padding: Int?
+    ): ResponseEntity<*> =
+        ResponseEntity.ok(faceService.cropRegionMaskedBase64(face.bytes, region, shape, padding))
 }
